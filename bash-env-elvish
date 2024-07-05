@@ -72,7 +72,7 @@ function eval_and_or_source_then_send_environment() {
         fi
     else
         # otherwise eval from stdin
-        _source=$(cat)
+        _source=$(</dev/stdin)
         if ! eval "$_source" >&2; then
             send_error "failed to load environment from stdin"
             return 1
