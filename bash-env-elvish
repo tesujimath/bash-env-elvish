@@ -56,8 +56,8 @@ function eval_and_or_source_then_send_environment() {
         _env_old[$_name]="${_value@Q}"
     done < <(env -0)
 
-    # source from file
     if test -n "$_path"; then
+        # source from file if specified
 
         if test ! -r "$_path"; then
             send_error "no such file '$_path'"
@@ -70,13 +70,13 @@ function eval_and_or_source_then_send_environment() {
             send_error "failed to load environment from '$_path'"
             return 1
         fi
-    fi
-
-    # eval from stdin until EOF
-    _source=$(cat)
-    if ! eval "$_source" >&2; then
-        send_error "failed to load environment from stdin"
-        return 1
+    else
+        # otherwise eval from stdin
+        _source=$(cat)
+        if ! eval "$_source" >&2; then
+            send_error "failed to load environment from stdin"
+            return 1
+        fi
     fi
 
     # export shell variables to environment as specified, if any
