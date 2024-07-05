@@ -122,7 +122,8 @@ function main() {
                 bad_usage
                 exit 1
             }
-            mapfile -t _exports <"${2//,/ /}"
+            mapfile -td, _exports <<<"$2,"
+            unset '_exports[-1]'
             shift
             ;;
         -*)
