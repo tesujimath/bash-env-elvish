@@ -31,8 +31,7 @@ function emit_vars() {
     local -n _emit_set="$3"
 
     for _name in "${!_emit_setenv[@]}"; do
-        # TODO escape single quotes
-        echo "set E:$_name = '${_emit_setenv[$_name]}'"
+        echo "set E:$_name = '${_emit_setenv[$_name]//\'/\'\'}'"
     done
 
     for _name in "${_emit_unsetenv[@]}"; do
@@ -41,8 +40,7 @@ function emit_vars() {
 
     # TODO shellvars
     # for _name in "${!_set[@]}"; do
-    #     # TODO escape single quotes
-    #     echo "var $_name = '${_setenv[$_name]}'"
+    #     echo "var $_name = '${_setenv[$_name]//\'/\'\'}'"
     # done
 }
 
