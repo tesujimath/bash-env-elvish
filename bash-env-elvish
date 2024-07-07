@@ -38,10 +38,9 @@ function emit_vars() {
         echo "del E:$_name"
     done
 
-    # TODO shellvars
-    # for _name in "${!_set[@]}"; do
-    #     echo "var $_name = '${_setenv[$_name]//\'/\'\'}'"
-    # done
+    for _name in "${!_set[@]}"; do
+        echo "var $_name = '${_set[$_name]//\'/\'\'}'"
+    done
 }
 
 function send_error() {
@@ -67,8 +66,12 @@ function eval_or_source_and_capture() {
     declare -A _env_old
     get_env _env_old
 
-    # TODO set all shellvars to dictinctive _unset_value
-    _unset_value="XXX_UNSET_XXX"
+    # set all shellvars to dictinctive _unset_value
+    local _unset_value="_BASH_ENV_ELVISH_UNSET_$$"
+    for _name in "${_eval_shellvars[@]}"; do
+        local -n _eval_shellvar="$_name"
+        _eval_shellvar="$_unset_value"
+    done
 
     if test -n "$_path"; then
         # source from file if specified
@@ -115,10 +118,9 @@ function eval_or_source_and_capture() {
     done
 
     # shellvars
-    # TODO test against _unset_value, not empty
     for _name in "${_eval_shellvars[@]}"; do
         _value="${!_name}"
-        test -n "${_value}" && {
+        test "${_value}" != "${_unset_value}" && {
             _eval_set[$_name]="${_value}"
         }
     done
