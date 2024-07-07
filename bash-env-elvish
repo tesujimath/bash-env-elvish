@@ -24,37 +24,53 @@
 
 shopt -s extglob
 
-function send_environment() {
+function emit_vars() {
     local _name
+    local -n _emit_setenv="$1"
+    local -n _emit_unsetenv="$2"
+    local -n _emit_set="$3"
 
-    for _name in "$@"; do
-        if test -v "$_name"; then
-            # TODO escape single quotes
-            echo "set E:$_name = '${!_name}'"
-        else
-            echo "del E:$_name"
-        fi
+    for _name in "${!_emit_setenv[@]}"; do
+        # TODO escape single quotes
+        echo "set E:$_name = '${_emit_setenv[$_name]}'"
     done
+
+    for _name in "${_emit_unsetenv[@]}"; do
+        echo "del E:$_name"
+    done
+
+    # TODO shellvars
+    # for _name in "${!_set[@]}"; do
+    #     # TODO escape single quotes
+    #     echo "var $_name = '${_setenv[$_name]}'"
+    # done
 }
 
 function send_error() {
     echo >&2 "ERROR: $1"
 }
 
-function eval_and_or_source_then_send_environment() {
-    local _source _path _name _value _env_old _env_new _env_changed_or_unset _exports _export
-    _path="$1"
-    shift
+function get_env() {
+    local -n _get_env="$1"
+    while IFS='=' read -r -d '' _name _value; do
+        _get_env[$_name]="${_value}"
+    done < <(env -0)
+}
 
-    # final argument is array of exports, if any
-    declare -a _exports
-    _exports=("$@")
+function eval_or_source_and_capture() {
+    local _source _path _name _value _env_old _env_new _unset_value
+    _path="$1"
+    local -n _eval_shellvars="$2"
+    local -n _eval_setenv="$3"
+    local -n _eval_unsetenv="$4"
+    local -n _eval_set="$5"
 
     # get previous env
     declare -A _env_old
-    while IFS='=' read -r -d '' _name _value; do
-        _env_old[$_name]="${_value@Q}"
-    done < <(env -0)
+    get_env _env_old
+
+    # TODO set all shellvars to dictinctive _unset_value
+    _unset_value="XXX_UNSET_XXX"
 
     if test -n "$_path"; then
         # source from file if specified
@@ -79,16 +95,9 @@ function eval_and_or_source_then_send_environment() {
         fi
     fi
 
-    # export shell variables to environment as specified, if any
-    for _export in "${_exports[@]}"; do
-        export "${_export}=${!_export}"
-    done
-
     # get new environment
     declare -A _env_new
-    while IFS='=' read -r -d '' _name _value; do
-        _env_new[$_name]="${_value@Q}"
-    done < <(env -0)
+    get_env _env_new
 
     # determine what changed or became unset
     declare -a _env_changed_or_unset
@@ -96,34 +105,41 @@ function eval_and_or_source_then_send_environment() {
     # changes
     for _name in "${!_env_new[@]}"; do
         if test "${_env_new[$_name]}" != "${_env_old[$_name]}"; then
-            _env_changed_or_unset+=("$_name")
+            _eval_setenv[$_name]="${_env_new[$_name]}"
         fi
     done
 
     # unset
     for _name in "${!_env_old[@]}"; do
         if test ! -v "$_name"; then
-            _env_changed_or_unset+=("$_name")
+            _eval_unsetenv+=("$_name")
         fi
     done
 
-    send_environment "${_env_changed_or_unset[@]}"
+    # shellvars
+    # TODO test against _unset_value, not empty
+    for _name in "${_eval_shellvars[@]}"; do
+        _value="${!_name}"
+        test -n "${_value}" && {
+            _eval_set[$_name]="${_value}"
+        }
+    done
 }
 
 function main() {
-    local _line _path _stdinval _stdout_id _exports _cwd
-    declare -a _exports
+    local _line _path _stdinval _stdout_id _cwd
+    declare -a _shellvars
 
     # process args
     while test -n "$1"; do
         case "$1" in
-        --export)
+        --shellvars)
             test -n "$2" || {
                 bad_usage
                 exit 1
             }
-            mapfile -td, _exports <<<"$2,"
-            unset '_exports[-1]'
+            mapfile -td, _shellvars <<<"$2,"
+            unset '_shellvars[-1]'
             shift
             ;;
         -*)
@@ -141,7 +157,12 @@ function main() {
         shift
     done
 
-    eval_and_or_source_then_send_environment "$_path" "${_exports[@]}"
+    # eval_or_source_then_send_environment "$_path" "${_shellvars[@]}"
+    declare -A _setenv
+    declare -a _unsetenv
+    declare -A _set
+    eval_or_source_and_capture "$_path" _shellvars _setenv _unsetenv _set
+    emit_vars _setenv _unsetenv _set
 }
 
 function bad_usage() {
