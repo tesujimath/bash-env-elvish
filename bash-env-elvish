@@ -50,6 +50,8 @@ function send_error() {
 function get_env() {
     local -n _get_env="$1"
     while IFS='=' read -r -d '' _name _value; do
+        # ShellCheck is confused here I think
+        # shellcheck disable=SC2004
         _get_env[$_name]="${_value}"
     done < <(env -0)
 }
@@ -106,6 +108,8 @@ function eval_or_source_and_capture() {
     # changes
     for _name in "${!_env_new[@]}"; do
         if test "${_env_new[$_name]}" != "${_env_old[$_name]}"; then
+            # ShellCheck is confused here I think
+            # shellcheck disable=SC2004
             _eval_setenv[$_name]="${_env_new[$_name]}"
         fi
     done
@@ -121,14 +125,18 @@ function eval_or_source_and_capture() {
     for _name in "${_eval_shellvars[@]}"; do
         _value="${!_name}"
         test "${_value}" != "${_unset_value}" && {
+            # ShellCheck is confused here I think
+            # shellcheck disable=SC2004
             _eval_set[$_name]="${_value}"
         }
     done
 }
 
-function main() {
-    local _line _path _stdinval _stdout_id _cwd
-    declare -a _shellvars
+function get_args() {
+    local -n _opt_path="$1"
+    local -n _opt_shellvars="$2"
+    local -n _opt_shellfns="$3"
+    shift 3
 
     # process args
     while test -n "$1"; do
@@ -138,8 +146,17 @@ function main() {
                 bad_usage
                 exit 1
             }
-            mapfile -td, _shellvars <<<"$2,"
-            unset '_shellvars[-1]'
+            mapfile -td, _opt_shellvars <<<"$2,"
+            unset '_opt_shellvars[-1]'
+            shift
+            ;;
+        --shellfns)
+            test -n "$2" || {
+                bad_usage
+                exit 1
+            }
+            mapfile -td, _opt_shellfns <<<"$2,"
+            unset '_opt_shellfns[-1]'
             shift
             ;;
         -*)
@@ -147,17 +164,24 @@ function main() {
             exit 1
             ;;
         *)
-            test -n "$_path" && {
+            test -n "$_opt_path" && {
                 bad_usage
                 exit 1
             }
-            _path="$1"
+            _opt_path="$1"
             ;;
         esac
         shift
     done
+}
 
-    # eval_or_source_then_send_environment "$_path" "${_shellvars[@]}"
+function main() {
+    local _line _path _stdinval _stdout_id _cwd
+    declare -a _shellvars
+    declare -a _shellfns
+
+    get_args _path _shellvars _shellfns "$@"
+
     declare -A _setenv
     declare -a _unsetenv
     declare -A _set
@@ -166,7 +190,7 @@ function main() {
 }
 
 function bad_usage() {
-    echo >&2 "usage: bash-env-elvish [--export <comma-separate-variables>] [source]"
+    echo >&2 "usage: bash-env-elvish [--shellvars <comma-separate-variables>] [--shellfns <comma-separate-function-names>] [source]"
 }
 
 main "$@"
