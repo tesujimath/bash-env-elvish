@@ -132,6 +132,62 @@ function eval_or_source_and_capture() {
     done
 }
 
+function fn_and_capture() {
+    local _source _fn _name _value _env_old _env_new _unset_value
+    _fn="$1"
+    local -n _fn_shellvars="$2"
+    local -n _fn_setenv="$3"
+    local -n _fn_unsetenv="$4"
+    local -n _fn_set="$5"
+
+    # get previous env
+    declare -A _env_old
+    get_env _env_old
+
+    # set all shellvars to dictinctive _unset_value
+    local _unset_value="_BASH_ENV_ELVISH_UNSET_$$"
+    for _name in "${_fn_shellvars[@]}"; do
+        local -n _fn_shellvar="$_name"
+        _fn_shellvar="$_unset_value"
+    done
+
+    # execute the function
+    "$_fn"
+
+    # get new environment
+    declare -A _env_new
+    get_env _env_new
+
+    # determine what changed or became unset
+    declare -a _env_changed_or_unset
+
+    # changes
+    for _name in "${!_env_new[@]}"; do
+        if test "${_env_new[$_name]}" != "${_env_old[$_name]}"; then
+            # ShellCheck is confused here I think
+            # shellcheck disable=SC2004
+            _fn_setenv[$_name]="${_env_new[$_name]}"
+        fi
+    done
+
+    # unset
+    for _name in "${!_env_old[@]}"; do
+        if test ! -v "$_name"; then
+            _fn_unsetenv+=("$_name")
+        fi
+    done
+
+    # shellvars
+    for _name in "${_fn_shellvars[@]}"; do
+        _value="${!_name}"
+        test "${_value}" != "${_unset_value}" && {
+            # ShellCheck is confused here I think
+            # shellcheck disable=SC2004
+            _fn_set[$_name]="${_value}"
+        }
+    done
+}
+
 function get_args() {
     local -n _opt_path="$1"
     local -n _opt_shellvars="$2"
@@ -176,7 +232,7 @@ function get_args() {
 }
 
 function main() {
-    local _line _path _stdinval _stdout_id _cwd
+    local _line _path _stdinval _stdout_id _fn
     declare -a _shellvars
     declare -a _shellfns
 
@@ -187,6 +243,13 @@ function main() {
     declare -A _set
     eval_or_source_and_capture "$_path" _shellvars _setenv _unsetenv _set
     emit_vars _setenv _unsetenv _set
+
+    for _fn in "${_shellfns[@]}"; do
+        fn_and_capture "$_fn" _shellvars _setenv _unsetenv _set
+        echo "fn $_fn {"
+        emit_vars _setenv _unsetenv _set
+        echo "}"
+    done
 }
 
 function bad_usage() {
