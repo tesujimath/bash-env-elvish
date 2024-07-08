@@ -1,9 +1,8 @@
 # Virtualenv activation for Elvish
 use path
-use github.com/tesujimath/bash-env-elvish/bash-env
 
 # activate a virtualenv and return the deactivation function
-fn activate { |env-path|
+fn activate {|env-path|
   var activation-path = (path:join $env-path bin activate)
   var env = (bash-env-elvish --shellfns deactivate $activation-path | slurp)
   var eval-ns = $nil

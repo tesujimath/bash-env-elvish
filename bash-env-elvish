@@ -198,21 +198,17 @@ function get_args() {
     while test -n "$1"; do
         case "$1" in
         --shellvars)
-            test -n "$2" || {
-                bad_usage
-                exit 1
+            test -n "$2" && {
+                mapfile -td, _opt_shellvar_names <<<"$2,"
+                unset '_opt_shellvar_names[-1]'
             }
-            mapfile -td, _opt_shellvar_names <<<"$2,"
-            unset '_opt_shellvar_names[-1]'
             shift
             ;;
         --shellfns)
-            test -n "$2" || {
-                bad_usage
-                exit 1
+            test -n "$2" && {
+                mapfile -td, _opt_shellfn_names <<<"$2,"
+                unset '_opt_shellfn_names[-1]'
             }
-            mapfile -td, _opt_shellfn_names <<<"$2,"
-            unset '_opt_shellfn_names[-1]'
             shift
             ;;
         -*)
