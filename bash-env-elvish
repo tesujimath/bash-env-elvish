@@ -28,7 +28,7 @@ function emit_vars() {
     local _name
     local -n _emit_setenv="$1"
     local -n _emit_unsetenv="$2"
-    local -n _emit_set="$3"
+    local -n _emit_shellvars="$3"
 
     for _name in "${!_emit_setenv[@]}"; do
         echo "set E:$_name = '${_emit_setenv[$_name]//\'/\'\'}'"
@@ -38,8 +38,8 @@ function emit_vars() {
         echo "del E:$_name"
     done
 
-    for _name in "${!_set[@]}"; do
-        echo "var $_name = '${_set[$_name]//\'/\'\'}'"
+    for _name in "${!_emit_shellvars[@]}"; do
+        echo "var $_name = '${_emit_shellvars[$_name]//\'/\'\'}'"
     done
 }
 
@@ -59,18 +59,18 @@ function get_env() {
 function eval_or_source_and_capture() {
     local _source _path _name _value _env_old _env_new _unset_value
     _path="$1"
-    local -n _eval_shellvars="$2"
+    local -n _eval_shellvar_names="$2"
     local -n _eval_setenv="$3"
     local -n _eval_unsetenv="$4"
-    local -n _eval_set="$5"
+    local -n _eval_shellvars="$5"
 
     # get previous env
     declare -A _env_old
     get_env _env_old
 
-    # set all shellvars to dictinctive _unset_value
+    # set all shellvars to distinctive _unset_value
     local _unset_value="_BASH_ENV_ELVISH_UNSET_$$"
-    for _name in "${_eval_shellvars[@]}"; do
+    for _name in "${_eval_shellvar_names[@]}"; do
         local -n _eval_shellvar="$_name"
         _eval_shellvar="$_unset_value"
     done
@@ -122,12 +122,12 @@ function eval_or_source_and_capture() {
     done
 
     # shellvars
-    for _name in "${_eval_shellvars[@]}"; do
+    for _name in "${_eval_shellvar_names[@]}"; do
         _value="${!_name}"
         test "${_value}" != "${_unset_value}" && {
             # ShellCheck is confused here I think
             # shellcheck disable=SC2004
-            _eval_set[$_name]="${_value}"
+            _eval_shellvars[$_name]="${_value}"
         }
     done
 }
@@ -135,10 +135,10 @@ function eval_or_source_and_capture() {
 function fn_and_capture() {
     local _source _fn _name _value _env_old _env_new _unset_value
     _fn="$1"
-    local -n _fn_shellvars="$2"
+    local -n _fn_shellvar_names="$2"
     local -n _fn_setenv="$3"
     local -n _fn_unsetenv="$4"
-    local -n _fn_set="$5"
+    local -n _fn_shellvars="$5"
 
     # get previous env
     declare -A _env_old
@@ -146,7 +146,7 @@ function fn_and_capture() {
 
     # set all shellvars to dictinctive _unset_value
     local _unset_value="_BASH_ENV_ELVISH_UNSET_$$"
-    for _name in "${_fn_shellvars[@]}"; do
+    for _name in "${_fn_shellvar_names[@]}"; do
         local -n _fn_shellvar="$_name"
         _fn_shellvar="$_unset_value"
     done
@@ -178,20 +178,20 @@ function fn_and_capture() {
     done
 
     # shellvars
-    for _name in "${_fn_shellvars[@]}"; do
+    for _name in "${_fn_shellvar_names[@]}"; do
         _value="${!_name}"
         test "${_value}" != "${_unset_value}" && {
             # ShellCheck is confused here I think
             # shellcheck disable=SC2004
-            _fn_set[$_name]="${_value}"
+            _fn_shellvars[$_name]="${_value}"
         }
     done
 }
 
 function get_args() {
     local -n _opt_path="$1"
-    local -n _opt_shellvars="$2"
-    local -n _opt_shellfns="$3"
+    local -n _opt_shellvar_names="$2"
+    local -n _opt_shellfn_names="$3"
     shift 3
 
     # process args
@@ -202,8 +202,8 @@ function get_args() {
                 bad_usage
                 exit 1
             }
-            mapfile -td, _opt_shellvars <<<"$2,"
-            unset '_opt_shellvars[-1]'
+            mapfile -td, _opt_shellvar_names <<<"$2,"
+            unset '_opt_shellvar_names[-1]'
             shift
             ;;
         --shellfns)
@@ -211,8 +211,8 @@ function get_args() {
                 bad_usage
                 exit 1
             }
-            mapfile -td, _opt_shellfns <<<"$2,"
-            unset '_opt_shellfns[-1]'
+            mapfile -td, _opt_shellfn_names <<<"$2,"
+            unset '_opt_shellfn_names[-1]'
             shift
             ;;
         -*)
@@ -233,21 +233,21 @@ function get_args() {
 
 function main() {
     local _line _path _stdinval _stdout_id _fn
-    declare -a _shellvars
-    declare -a _shellfns
+    declare -a _shellvar_names
+    declare -a _shellfn_names
 
-    get_args _path _shellvars _shellfns "$@"
+    get_args _path _shellvar_names _shellfn_names "$@"
 
     declare -A _setenv
     declare -a _unsetenv
-    declare -A _set
-    eval_or_source_and_capture "$_path" _shellvars _setenv _unsetenv _set
-    emit_vars _setenv _unsetenv _set
+    declare -A _shellvars
+    eval_or_source_and_capture "$_path" _shellvar_names _setenv _unsetenv _shellvars
+    emit_vars _setenv _unsetenv _shellvars
 
-    for _fn in "${_shellfns[@]}"; do
-        fn_and_capture "$_fn" _shellvars _setenv _unsetenv _set
+    for _fn in "${_shellfn_names[@]}"; do
+        fn_and_capture "$_fn" _shellvar_names _setenv _unsetenv _shellvars
         echo "fn $_fn {"
-        emit_vars _setenv _unsetenv _set
+        emit_vars _setenv _unsetenv _shellvars
         echo "}"
     done
 }
