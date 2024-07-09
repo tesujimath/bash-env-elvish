@@ -75,7 +75,7 @@ use github.com/tesujimath/bash-env-elvish/virtualenv
 3. (Optional) Define a function in `rc.elv` to unwrap `bash-env` from its namespace
 
 ```
-fn bash-env { |@args| bash-env:bash-env $@args }
+fn bash-env { |&shellvars=[] @args| bash-env:bash-env &shellvars=$shellvars $@args }
 ```
 
 # Improvements
