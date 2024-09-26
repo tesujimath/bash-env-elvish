@@ -31,11 +31,11 @@ function emit_vars() {
     local -n _emit_shellvars="$3"
 
     for _name in "${!_emit_setenv[@]}"; do
-        echo "set E:$_name = '${_emit_setenv[$_name]//\'/\'\'}'"
+        echo "set-env $_name '${_emit_setenv[$_name]//\'/\'\'}'"
     done
 
     for _name in "${_emit_unsetenv[@]}"; do
-        echo "del E:$_name"
+        echo "unset-env $_name"
     done
 
     for _name in "${!_emit_shellvars[@]}"; do
