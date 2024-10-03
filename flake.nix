@@ -13,11 +13,31 @@
           pkgs = import nixpkgs {
             inherit system;
           };
-          bash_env_elvish = pkgs.writeShellScriptBin "bash-env-elvish"
-            (builtins.readFile ./bash-env-elvish);
+          bash_env_elvish =
+            let
+              inherit (pkgs) bash coreutils makeWrapper writeShellScriptBin;
+              inherit (pkgs.lib) makeBinPath;
+            in
+            (writeShellScriptBin "bash-env-elvish" (builtins.readFile ./bash-env-elvish)).overrideAttrs (old: {
+              buildInputs = [ bash makeWrapper ];
+              buildCommand =
+                ''
+                  ${old.buildCommand}
+                  patchShebangs $out
+                  wrapProgram $out/bin/bash-env-elvish --set PATH ${makeBinPath [
+                    coreutils
+                  ]}
+                '';
+            });
         in
-          {
-            packages.default = bash_env_elvish;
-          }
+        {
+          devShells.default = pkgs.mkShell {
+            buildInputs = [
+              bash_env_elvish
+            ];
+          };
+
+          packages.default = bash_env_elvish;
+        }
       );
 }
