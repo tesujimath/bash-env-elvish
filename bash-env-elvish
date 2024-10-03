@@ -108,16 +108,20 @@ function eval_or_source_and_capture() {
     # changes
     for _name in "${!_env_new[@]}"; do
         if test "${_env_new[$_name]}" != "${_env_old[$_name]}"; then
-            # ShellCheck is confused here I think
-            # shellcheck disable=SC2004
-            _eval_setenv[$_name]="${_env_new[$_name]}"
+            if [[ "$_name" != BASH_FUNC_* ]]; then
+                # ShellCheck is confused here I think
+                # shellcheck disable=SC2004
+                _eval_setenv[$_name]="${_env_new[$_name]}"
+            fi
         fi
     done
 
     # unset
     for _name in "${!_env_old[@]}"; do
         if test ! -v "$_name"; then
-            _eval_unsetenv+=("$_name")
+            if [[ "$_name" != BASH_FUNC_* ]]; then
+                _eval_unsetenv+=("$_name")
+            fi
         fi
     done
 
@@ -125,9 +129,11 @@ function eval_or_source_and_capture() {
     for _name in "${_eval_shellvar_names[@]}"; do
         _value="${!_name}"
         test "${_value}" != "${_unset_value}" && {
-            # ShellCheck is confused here I think
-            # shellcheck disable=SC2004
-            _eval_shellvars[$_name]="${_value}"
+            if [[ "$_name" != BASH_FUNC_* ]]; then
+                # ShellCheck is confused here I think
+                # shellcheck disable=SC2004
+                _eval_shellvars[$_name]="${_value}"
+            fi
         }
     done
 }
