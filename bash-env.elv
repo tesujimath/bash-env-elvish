@@ -2,25 +2,24 @@
 use str
 
 fn bash-env { |&shellvars=[] @args|
-  var env = ""
   var n_args = (count $args)
   var comma_shellvars = (str:join , $shellvars)
-  if (== $n_args 0) {
-    set env = (bash-env-elvish --shellvars $comma_shellvars | slurp)
+  var result = (if (== $n_args 0) {
+    put (bash-env.sh --shellvars $comma_shellvars | from-json)
   } elif (== $n_args 1) {
-    set env = (bash-env-elvish --shellvars $comma_shellvars $args[0] | slurp)
+    put (bash-env.sh --shellvars $comma_shellvars $args[0] | from-json)
   } else {
     fail "bash-env takes zero (for stdin) or one argument (for path) only"
-  }
-  var eval-ns = $nil
-  eval &on-end={|ns| set eval-ns = $ns} $env
+  })
 
-  # return shellvars as a map, if any
-  if (> (count $shellvars) 0) {
-    put (all $shellvars | each {|shellvar|
-      if (has-key $eval-ns $shellvar) {
-        put [$shellvar $eval-ns[$shellvar]]
-      }
-    } | make-map)
+  keys $result[env] | each {|k|
+    var v = $result[env][$k]
+    if (eq $v $nil) {
+      unset-env $k
+    } else {
+      set-env $k $result[env][$k]
+    }
   }
+
+  put $result[shellvars]
 }
