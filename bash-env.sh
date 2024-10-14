@@ -134,16 +134,18 @@ function eval_or_source() {
 function get_args() {
     local -n _opt_path="$1"
     local -n _opt_shellfn_names="$2"
-    shift 3
+    shift 2
 
     # process args
     while test -n "$1"; do
         case "$1" in
         --shellfns)
-            test -n "$2" && {
-                mapfile -td, _opt_shellfn_names <<<"$2,"
-                unset '_opt_shellfn_names[-1]'
+            test -z "$2" && {
+                bad_usage "--shellfns requires comma-separated list of function names"
+                exit 1
             }
+            mapfile -td, _opt_shellfn_names <<<"$2,"
+            unset '_opt_shellfn_names[-1]'
             shift
             ;;
         -*)
@@ -152,7 +154,7 @@ function get_args() {
             ;;
         *)
             test -n "$_opt_path" && {
-                bad_usage
+                bad_usage "repeated path $_opt_path"
                 exit 1
             }
             _opt_path="$1"
@@ -206,7 +208,8 @@ function main() {
 }
 
 function bad_usage() {
-    echo >&2 "usage: bash-env.sh [--shellvars <comma-separated-variables>] [--shellfns <comma-separated-function-names>] [source]"
+    test -n "$1" && echo >&2 "bash-env.sh: $1"
+    echo >&2 "usage: bash-env.sh [--shellfns <comma-separated-function-names>] [source]"
 }
 
 main "$@"
