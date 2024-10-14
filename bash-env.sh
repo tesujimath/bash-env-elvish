@@ -24,10 +24,6 @@
 
 shopt -s extglob
 
-function send_error() {
-    echo >&2 "ERROR: $1"
-}
-
 function capture() {
     local -n _capture_env="$1"
     local -n _capture_shellvar_names="$2"
@@ -47,19 +43,49 @@ function capture() {
     done
 }
 
+function emit_error() {
+    local _msg
+    _msg="$1"
+    jq -c <<EOF
+{
+  "error": "$_msg"
+}
+EOF
+}
+
+function emit_error_exit() {
+    emit_error "$1"
+    exit 1
+}
+
+function emit_value() {
+    # jq -R produces nothing on empty input, but we want ""
+    if test -n "$1"; then
+        echo -n "$1" | jq -R
+    else
+        echo -n '""'
+    fi
+}
+
 function emit() {
     local _name
-    local _emit_tag="$1"
-    local -n _emit_previous="$2"
-    local -n _emit_current="$3"
+    local -a _names
+    local _comma=""
+    local _sep="$1"
+    local _tag="$2"
+    local -n _emit_previous="$3"
+    local -n _emit_current="$4"
+
+    echo -n "$_sep\"$_tag\":{"
 
     # changes
-    for _name in "${!_emit_current[@]}"; do
+    _names=("${!_emit_current[@]}")
+    for _name in "${_names[@]}"; do
         if test "${_emit_current[$_name]}" != "${_emit_previous[$_name]}"; then
             if [[ "$_name" != BASH_FUNC_* ]]; then
-                # ShellCheck is confused here I think
-                # shellcheck disable=SC2004
-                echo "$_emit_tag $_name '${_emit_current[$_name]//\'/\'\'}'"
+                echo -n "${_comma}\"$_name\":"
+                emit_value "${_emit_current[$_name]}"
+                _comma=","
             fi
         fi
     done
@@ -68,10 +94,13 @@ function emit() {
     for _name in "${!_emit_previous[@]}"; do
         if test ! -v "$_name"; then
             if [[ "$_name" != BASH_FUNC_* ]]; then
-                echo "un$_emit_tag  $_name"
+                echo -n "${_comma}\"$_name\":null"
+                _comma=","
             fi
         fi
     done
+
+    echo -n "}"
 }
 
 function eval_or_source() {
@@ -82,22 +111,19 @@ function eval_or_source() {
         # source from file if specified
 
         if test ! -r "$_path"; then
-            send_error "no such file '$_path'"
-            return
+            emit_error_exit "no such file '$_path'"
         fi
 
         # ShellCheck can't cope with sourcing from an unknown path
         # shellcheck disable=SC1090
         if ! source "$_path" >&2; then
-            send_error "failed to load environment from '$_path'"
-            return 1
+            emit_error_exit "failed to load environment from '$_path'"
         fi
     else
         # otherwise eval from stdin
         _source=$(</dev/stdin)
         if ! eval "$_source" >&2; then
-            send_error "failed to load environment from stdin"
-            return 1
+            emit_error_exit "failed to load environment from stdin"
         fi
     fi
 }
@@ -157,20 +183,32 @@ function main() {
     eval_or_source "$_path"
     capture _env_current _shellvar_names _shellvars_current
 
-    emit set-env _env_previous _env_current
-    emit set _shellvars_previous _shellvars_current
+    emit "{" env _env_previous _env_current
+    emit "," shellvars _shellvars_previous _shellvars_current
 
+    test "${#_shellfn_names[@]}" -gt 0 && {
+        echo ",\"fn\":{"
+    }
+
+    local _fn_comma=""
     for _fn in "${_shellfn_names[@]}"; do
         capture _env_previous _shellvar_names _shellvars_previous
         # execute the function
         "$_fn"
         capture _env_current _shellvar_names _shellvars_current
 
-        echo "fn $_fn {"
-        emit set-env _env_previous _env_current
-        emit set _shellvars_previous _shellvars_current
+        echo "$_fn_comma\"$_fn\":"
+        emit "{" env _env_previous _env_current
+        emit "," shellvars _shellvars_previous _shellvars_current
         echo "}"
+        _fn_comma=","
     done
+
+    test "${#_shellfn_names[@]}" -gt 0 && {
+        echo "}"
+    }
+
+    echo "}"
 }
 
 function bad_usage() {

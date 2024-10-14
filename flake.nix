@@ -1,5 +1,5 @@
 {
-  description = "Nix package for bash-env-elvish";
+  description = "Nix package for bash-env";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
@@ -13,32 +13,35 @@
           pkgs = import nixpkgs {
             inherit system;
           };
-          bash_env_elvish =
+          bash_env =
             let
-              inherit (pkgs) bash coreutils makeWrapper writeShellScriptBin;
+              inherit (pkgs) bash coreutils jq makeWrapper writeShellScriptBin;
               inherit (pkgs.lib) makeBinPath;
             in
-            (writeShellScriptBin "bash-env-elvish" (builtins.readFile ./bash-env-elvish)).overrideAttrs (old: {
-              buildInputs = [ bash makeWrapper ];
+            (writeShellScriptBin "bash-env.sh" (builtins.readFile ./bash-env.sh)).overrideAttrs (old: {
+              buildInputs = [ bash jq makeWrapper ];
               buildCommand =
                 ''
                   ${old.buildCommand}
                   patchShebangs $out
-                  wrapProgram $out/bin/bash-env-elvish --set PATH ${makeBinPath [
+                  wrapProgram $out/bin/bash-env.sh --set PATH ${makeBinPath [
                     coreutils
+                    jq
                   ]}
                 '';
             });
         in
         {
-          devShells.default = pkgs.mkShell {
-            buildInputs = [
-              pkgs.bashInteractive
-              bash_env_elvish
-            ];
-          };
+          devShells.default = with pkgs;
+            mkShell {
+              buildInputs = [
+                bashInteractive
 
-          packages.default = bash_env_elvish;
+                bash_env
+              ];
+            };
+
+          packages.default = bash_env;
         }
       );
 }
