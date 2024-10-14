@@ -30,16 +30,10 @@ Agent pid 921717
 > echo $E:SSH_AUTH_SOCK
 /tmp/ssh-XXXXXXI4IoXr/agent.921715
 
-> egrep '(ID|NAME)=' /etc/os-release
-BUILD_ID="24.11.20240531.57610d2"
-ID=nixos
-IMAGE_ID=""
-NAME=NixOS
-PRETTY_NAME="NixOS 24.11 (Vicuña)"
-VERSION_CODENAME="vicuña"
-VERSION_ID="24.11"
-> bash-env:bash-env &shellvars=[ID IMAGE_ID NAME SOMETHING_ELSE] /etc/os-release
-▶ [&ID=nixos &IMAGE_ID='' &NAME=NixOS]
+> bash-env:bash-env /etc/os-release
+
+> bash-env:bash-env &shellvars /etc/os-release
+▶ [&ANSI_COLOR='1;34' &BASH_LINENO=189 &BUG_REPORT_URL=https://github.com/NixOS/nixpkgs/issues &BUILD_ID=24.11.20240916.99dc878 &DOCUMENTATION_URL=https://nixos.org/learn.html &HOME_URL=https://nixos.org/ &ID=nixos &LOGO=nix-snowflake &NAME=NixOS &PRETTY_NAME='NixOS 24.11 (Vicuna)' &SUPPORT_URL=https://nixos.org/community.html &VERSION='24.11 (Vicuna)' &VERSION_CODENAME=vicuna &VERSION_ID=24.11 &_value=$nil]
 ```
 
 ## virtualenv
@@ -75,7 +69,7 @@ use github.com/tesujimath/bash-env-elvish/virtualenv
 3. (Optional) Define a function in `rc.elv` to unwrap `bash-env` from its namespace
 
 ```
-fn bash-env { |&shellvars=[] @args| bash-env:bash-env &shellvars=$shellvars $@args }
+var bash-env~ = $bash-env:bash-env~
 ```
 
 # Improvements

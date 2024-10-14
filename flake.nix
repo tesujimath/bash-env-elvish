@@ -15,7 +15,7 @@
           };
           bash_env =
             let
-              inherit (pkgs) bash coreutils jq makeWrapper writeShellScriptBin;
+              inherit (pkgs) bash coreutils gnused jq makeWrapper writeShellScriptBin;
               inherit (pkgs.lib) makeBinPath;
             in
             (writeShellScriptBin "bash-env.sh" (builtins.readFile ./bash-env.sh)).overrideAttrs (old: {
@@ -26,6 +26,7 @@
                   patchShebangs $out
                   wrapProgram $out/bin/bash-env.sh --set PATH ${makeBinPath [
                     coreutils
+                    gnused
                     jq
                   ]}
                 '';

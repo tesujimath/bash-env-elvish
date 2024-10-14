@@ -26,8 +26,7 @@ shopt -s extglob
 
 function capture() {
     local -n _capture_env="$1"
-    local -n _capture_shellvar_names="$2"
-    local -n _capture_shellvars="$3"
+    local -n _capture_shellvars="$2"
     local _name _value
 
     # environment variables
@@ -36,7 +35,11 @@ function capture() {
     done < <(env -0)
 
     # shellvars
-    for _name in "${_capture_shellvar_names[@]}"; do
+    for _name in $(
+        set -o posix
+        set | sed -n -e '/^[a-zA-Z_][a-zA-Z_0-9]*=/s/=.*$//p'
+        set +o posix
+    ); do
         if test -v "$_name" -a ! "${_capture_env[$_name]+EXISTS}"; then
             _capture_shellvars["$_name"]="${!_name}"
         fi
@@ -130,20 +133,12 @@ function eval_or_source() {
 
 function get_args() {
     local -n _opt_path="$1"
-    local -n _opt_shellvar_names="$2"
-    local -n _opt_shellfn_names="$3"
+    local -n _opt_shellfn_names="$2"
     shift 3
 
     # process args
     while test -n "$1"; do
         case "$1" in
-        --shellvars)
-            test -n "$2" && {
-                mapfile -td, _opt_shellvar_names <<<"$2,"
-                unset '_opt_shellvar_names[-1]'
-            }
-            shift
-            ;;
         --shellfns)
             test -n "$2" && {
                 mapfile -td, _opt_shellfn_names <<<"$2,"
@@ -169,19 +164,18 @@ function get_args() {
 
 function main() {
     local _path _fn
-    declare -a _shellvar_names
     declare -a _shellfn_names
 
-    get_args _path _shellvar_names _shellfn_names "$@"
+    get_args _path _shellfn_names "$@"
 
     declare -A _env_previous
     declare -A _env_current
     declare -A _shellvars_previous
     declare -A _shellvars_current
 
-    capture _env_previous _shellvar_names _shellvars_previous
+    capture _env_previous _shellvars_previous
     eval_or_source "$_path"
-    capture _env_current _shellvar_names _shellvars_current
+    capture _env_current _shellvars_current
 
     emit "{" env _env_previous _env_current
     emit "," shellvars _shellvars_previous _shellvars_current
@@ -192,10 +186,10 @@ function main() {
 
     local _fn_comma=""
     for _fn in "${_shellfn_names[@]}"; do
-        capture _env_previous _shellvar_names _shellvars_previous
+        capture _env_previous _shellvars_previous
         # execute the function
         "$_fn"
-        capture _env_current _shellvar_names _shellvars_current
+        capture _env_current _shellvars_current
 
         echo "$_fn_comma\"$_fn\":"
         emit "{" env _env_previous _env_current
