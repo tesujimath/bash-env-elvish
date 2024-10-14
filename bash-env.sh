@@ -24,56 +24,59 @@
 
 shopt -s extglob
 
-function emit_vars() {
-    local _name
-    local -n _emit_setenv="$1"
-    local -n _emit_unsetenv="$2"
-    local -n _emit_shellvars="$3"
-
-    for _name in "${!_emit_setenv[@]}"; do
-        echo "set-env $_name '${_emit_setenv[$_name]//\'/\'\'}'"
-    done
-
-    for _name in "${_emit_unsetenv[@]}"; do
-        echo "unset-env $_name"
-    done
-
-    for _name in "${!_emit_shellvars[@]}"; do
-        echo "var $_name = '${_emit_shellvars[$_name]//\'/\'\'}'"
-    done
-}
-
 function send_error() {
     echo >&2 "ERROR: $1"
 }
 
-function get_env() {
-    local -n _get_env="$1"
+function capture() {
+    local -n _capture_env="$1"
+    local -n _capture_shellvar_names="$2"
+    local -n _capture_shellvars="$3"
+    local _name _value
+
+    # environment variables
     while IFS='=' read -r -d '' _name _value; do
-        # ShellCheck is confused here I think
-        # shellcheck disable=SC2004
-        _get_env[$_name]="${_value}"
+        _capture_env["$_name"]="${_value}"
     done < <(env -0)
+
+    # shellvars
+    for _name in "${_capture_shellvar_names[@]}"; do
+        if test -v "$_name" -a ! "${_capture_env[$_name]+EXISTS}"; then
+            _capture_shellvars["$_name"]="${!_name}"
+        fi
+    done
 }
 
-function eval_or_source_and_capture() {
-    local _source _path _name _value _env_old _env_new _unset_value
-    _path="$1"
-    local -n _eval_shellvar_names="$2"
-    local -n _eval_setenv="$3"
-    local -n _eval_unsetenv="$4"
-    local -n _eval_shellvars="$5"
+function emit() {
+    local _name
+    local _emit_tag="$1"
+    local -n _emit_previous="$2"
+    local -n _emit_current="$3"
 
-    # get previous env
-    declare -A _env_old
-    get_env _env_old
-
-    # set all shellvars to distinctive _unset_value
-    local _unset_value="_BASH_ENV_ELVISH_UNSET_$$"
-    for _name in "${_eval_shellvar_names[@]}"; do
-        local -n _eval_shellvar="$_name"
-        _eval_shellvar="$_unset_value"
+    # changes
+    for _name in "${!_emit_current[@]}"; do
+        if test "${_emit_current[$_name]}" != "${_emit_previous[$_name]}"; then
+            if [[ "$_name" != BASH_FUNC_* ]]; then
+                # ShellCheck is confused here I think
+                # shellcheck disable=SC2004
+                echo "$_emit_tag $_name '${_emit_current[$_name]//\'/\'\'}'"
+            fi
+        fi
     done
+
+    # unset
+    for _name in "${!_emit_previous[@]}"; do
+        if test ! -v "$_name"; then
+            if [[ "$_name" != BASH_FUNC_* ]]; then
+                echo "un$_emit_tag  $_name"
+            fi
+        fi
+    done
+}
+
+function eval_or_source() {
+    local _source _path
+    _path="$1"
 
     if test -n "$_path"; then
         # source from file if specified
@@ -97,101 +100,6 @@ function eval_or_source_and_capture() {
             return 1
         fi
     fi
-
-    # get new environment
-    declare -A _env_new
-    get_env _env_new
-
-    # determine what changed or became unset
-    declare -a _env_changed_or_unset
-
-    # changes
-    for _name in "${!_env_new[@]}"; do
-        if test "${_env_new[$_name]}" != "${_env_old[$_name]}"; then
-            if [[ "$_name" != BASH_FUNC_* ]]; then
-                # ShellCheck is confused here I think
-                # shellcheck disable=SC2004
-                _eval_setenv[$_name]="${_env_new[$_name]}"
-            fi
-        fi
-    done
-
-    # unset
-    for _name in "${!_env_old[@]}"; do
-        if test ! -v "$_name"; then
-            if [[ "$_name" != BASH_FUNC_* ]]; then
-                _eval_unsetenv+=("$_name")
-            fi
-        fi
-    done
-
-    # shellvars
-    for _name in "${_eval_shellvar_names[@]}"; do
-        _value="${!_name}"
-        test "${_value}" != "${_unset_value}" && {
-            if [[ "$_name" != BASH_FUNC_* ]]; then
-                # ShellCheck is confused here I think
-                # shellcheck disable=SC2004
-                _eval_shellvars[$_name]="${_value}"
-            fi
-        }
-    done
-}
-
-function fn_and_capture() {
-    local _source _fn _name _value _env_old _env_new _unset_value
-    _fn="$1"
-    local -n _fn_shellvar_names="$2"
-    local -n _fn_setenv="$3"
-    local -n _fn_unsetenv="$4"
-    local -n _fn_shellvars="$5"
-
-    # get previous env
-    declare -A _env_old
-    get_env _env_old
-
-    # set all shellvars to dictinctive _unset_value
-    local _unset_value="_BASH_ENV_ELVISH_UNSET_$$"
-    for _name in "${_fn_shellvar_names[@]}"; do
-        local -n _fn_shellvar="$_name"
-        _fn_shellvar="$_unset_value"
-    done
-
-    # execute the function
-    "$_fn"
-
-    # get new environment
-    declare -A _env_new
-    get_env _env_new
-
-    # determine what changed or became unset
-    declare -a _env_changed_or_unset
-
-    # changes
-    for _name in "${!_env_new[@]}"; do
-        if test "${_env_new[$_name]}" != "${_env_old[$_name]}"; then
-            # ShellCheck is confused here I think
-            # shellcheck disable=SC2004
-            _fn_setenv[$_name]="${_env_new[$_name]}"
-        fi
-    done
-
-    # unset
-    for _name in "${!_env_old[@]}"; do
-        if test ! -v "$_name"; then
-            _fn_unsetenv+=("$_name")
-        fi
-    done
-
-    # shellvars
-    for _name in "${_fn_shellvar_names[@]}"; do
-        _value="${!_name}"
-        test "${_value}" != "${_unset_value}" && {
-            # ShellCheck is confused here I think
-            # shellcheck disable=SC2004
-            _fn_shellvars[$_name]="${_value}"
-        }
-    done
 }
 
 function get_args() {
@@ -234,28 +142,39 @@ function get_args() {
 }
 
 function main() {
-    local _line _path _stdinval _stdout_id _fn
+    local _path _fn
     declare -a _shellvar_names
     declare -a _shellfn_names
 
     get_args _path _shellvar_names _shellfn_names "$@"
 
-    declare -A _setenv
-    declare -a _unsetenv
-    declare -A _shellvars
-    eval_or_source_and_capture "$_path" _shellvar_names _setenv _unsetenv _shellvars
-    emit_vars _setenv _unsetenv _shellvars
+    declare -A _env_previous
+    declare -A _env_current
+    declare -A _shellvars_previous
+    declare -A _shellvars_current
+
+    capture _env_previous _shellvar_names _shellvars_previous
+    eval_or_source "$_path"
+    capture _env_current _shellvar_names _shellvars_current
+
+    emit set-env _env_previous _env_current
+    emit set _shellvars_previous _shellvars_current
 
     for _fn in "${_shellfn_names[@]}"; do
-        fn_and_capture "$_fn" _shellvar_names _setenv _unsetenv _shellvars
+        capture _env_previous _shellvar_names _shellvars_previous
+        # execute the function
+        "$_fn"
+        capture _env_current _shellvar_names _shellvars_current
+
         echo "fn $_fn {"
-        emit_vars _setenv _unsetenv _shellvars
+        emit set-env _env_previous _env_current
+        emit set _shellvars_previous _shellvars_current
         echo "}"
     done
 }
 
 function bad_usage() {
-    echo >&2 "usage: bash-env-elvish [--shellvars <comma-separate-variables>] [--shellfns <comma-separate-function-names>] [source]"
+    echo >&2 "usage: bash-env.sh [--shellvars <comma-separated-variables>] [--shellfns <comma-separated-function-names>] [source]"
 }
 
 main "$@"

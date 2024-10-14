@@ -33,6 +33,7 @@
         {
           devShells.default = pkgs.mkShell {
             buildInputs = [
+              pkgs.bashInteractive
               bash_env_elvish
             ];
           };
