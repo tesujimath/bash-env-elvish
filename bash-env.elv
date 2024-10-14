@@ -1,16 +1,20 @@
 # Bash Environment import for Elvish
 use str
 
-fn bash-env { |&shellvars=$nil &fn=[] @args|
-  var n_args = (count $args)
-  var comma_shellfns = (str:join , $fn)
-  var raw = (if (== $n_args 0) {
-    put (bash-env.sh --shellfns $comma_shellfns | from-json)
-  } elif (== $n_args 1) {
-    put (bash-env.sh --shellfns $comma_shellfns $args[0] | from-json)
-  } else {
+fn bash-env { |&shellvars=$nil &fn=[] @path|
+  if (> (count $path) 1) {
     fail "bash-env takes zero (for stdin) or one argument (for path) only"
-  })
+  }
+
+  var args = ({
+    if (not-eq $fn []) {
+      put --shellfns (str:join , $fn)
+    }
+
+    put (all $path)
+  } | put [(all)])
+
+  var raw = (bash-env.sh (all $args) | from-json)
 
   keys $raw[env] | each {|k|
     var v = $raw[env][$k]
