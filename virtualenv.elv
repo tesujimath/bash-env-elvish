@@ -1,7 +1,7 @@
 # Virtualenv activation for Elvish
 use path
 
-use github.com/tesujimath/bash-env/elvish/bash-env
+use github.com/tesujimath/bash-env-elvish/bash-env
 var bash-env~ = $bash-env:bash-env~
 
 # activate a virtualenv and return the deactivation function

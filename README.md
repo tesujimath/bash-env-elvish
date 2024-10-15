@@ -1,4 +1,4 @@
-# bash-env/elvish
+# bash-env-elvish
 
 - importing Bash environment into Elvish
 - extracting Bash style shell variables from source files like `/etc/os-release`

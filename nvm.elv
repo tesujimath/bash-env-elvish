@@ -1,7 +1,7 @@
 # NVM support. Add the following to rc.elv:
 #
 # ```elvish
-# use github.com/tesujimath/bash-env/elvish/nvm
+# use github.com/tesujimath/bash-env-elvish/nvm
 # nvm:init
 # var nvm~ = $nvm:nvm~
 # ```
@@ -11,7 +11,7 @@
 use str
 use path
 
-use github.com/tesujimath/bash-env/elvish/bash-env
+use github.com/tesujimath/bash-env-elvish/bash-env
 var bash-env~ = $bash-env:bash-env~
 
 fn quote-sh {|s| put "'"(str:replace "'" "'\\''" $s)"'" }
