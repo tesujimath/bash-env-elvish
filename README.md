@@ -5,6 +5,8 @@
 - activating/deactivating Python virtualenv
 - nvm for Node version management
 
+**Warning: breaking change in `0.4.0`, the Bash backend script `bash-env-elvish` has been unbundled, and is now consumed as [`bash-env-json`](https://github.com/tesujimath/bash-env-json)**
+
 ## Example Usage
 
 ### bash-env
@@ -53,7 +55,7 @@ Exception: exec: "pip": executable file not found in $PATH
 
 ## Installation
 
-Note that a recent change was to unbundle the Bash script backend, previously bash-env-elvish, now [bash-env-json](https://github.com/tesujimath/bash-env-json), because it is now generic JSON, shared by the NuShell and Elvish `bash-env` modules.
+Note that a recent change was to unbundle the Bash script backend, previously `bash-env-elvish`, now ``[bash-env-json](https://github.com/tesujimath/bash-env-json)``, because it is now generic JSON, shared by the NuShell and Elvish `bash-env` modules.
 
 1. Install `bash-env-json` script somewhere on the PATH (or install the Nix flake).
 
@@ -76,5 +78,3 @@ var bash-env~ = $bash-env:bash-env~
 1. Virtualenv deactivation is not terribly ergonomic.  There may be a more Elven way to do this.
 
 2. There may be a better way to import these functions into the REPL.
-
-A
