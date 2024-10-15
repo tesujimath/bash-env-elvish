@@ -14,7 +14,7 @@ fn bash-env { |&shellvars=$nil &fn=[] @path|
     put (all $path)
   } | put [(all)])
 
-  var raw = (var ok = ?(bash-env.sh (all $args) | from-json))
+  var raw = (var ok = ?(bash-env-json (all $args) | from-json))
   if $ok {
     keys $raw[env] | each {|k|
       var v = $raw[env][$k]

@@ -1,95 +1,80 @@
-# bash-env
+# bash-env/elvish
 
-This is a Bash script `bash-env.sh` for export of Bash environment as JSON, suitable for consumption by modern shells such as Elvish and NuShell.
+- importing Bash environment into Elvish
+- extracting Bash style shell variables from source files like `/etc/os-release`
+- activating/deactivating Python virtualenv
+- nvm for Node version management
 
-Adapters for [Elvish](elvish/README.md) and [NuShell](nushell/README.md) are provided for ease of use from those shells.
+## Example Usage
 
-Source files may be arbitrarily complex Bash, including conditionals, etc.
-
-Besides environment variables, shell variables and functions may also be exported, useful for supporting e.g. Python virtualenv activation/deactivation and Node version manager (nvm).
-
-Any suggestions for improvements are gladly received as issues, especially pull requests for other modern shells.
-
-## Rationale
-
-Everyone needs Bash format environment support.  Being able to export this as JSON makes it readily available for import into any modern shell.
-
-## Environment and Shell Variables
-
+### bash-env
 ```
-$ export C="bad value"
+> echo 'export A=1; export B=2; export Z=101' | bash-env:bash-env
+> echo $E:A $E:B $E:Z
+1 2 101
 
-$ cat tests/simple.env
-export A=a
-export B=b
-unset C
-d="I am a shell variable"
+> cat abc.env
+export A=101
+export B=102
+export C="fooled ya!"
 
+> bash-env:bash-env abc.env
+> echo $E:A $E:B $E:C
+101 102 fooled ya!
 
-$ ./bash-env.sh tests/simple.env | jq
-{
-  "env": {
-    "B": "b",
-    "A": "a",
-    "C": null
-  },
-  "shellvars": {
-    "d": "I am a shell variable"
-  }
-}
+> ssh-agent | bash-env:bash_env
+Agent pid 921717
+> echo $E:SSH_AUTH_SOCK
+/tmp/ssh-XXXXXXI4IoXr/agent.921715
+
+> bash-env:bash-env /etc/os-release
+
+> bash-env:bash-env &shellvars /etc/os-release
+▶ [&ANSI_COLOR='1;34' &BASH_LINENO=189 &BUG_REPORT_URL=https://github.com/NixOS/nixpkgs/issues &BUILD_ID=24.11.20240916.99dc878 &DOCUMENTATION_URL=https://nixos.org/learn.html &HOME_URL=https://nixos.org/ &ID=nixos &LOGO=nix-snowflake &NAME=NixOS &PRETTY_NAME='NixOS 24.11 (Vicuna)' &SUPPORT_URL=https://nixos.org/community.html &VERSION='24.11 (Vicuna)' &VERSION_CODENAME=vicuna &VERSION_ID=24.11 &_value=$nil]
 ```
 
-## Shell Functions
-
-The shell function per se cannot be exported.  Rather what is exported is the *result* of invoking the shell function.
+### virtualenv
 
 ```
-$ cat ./tests/shell-functions.env
-export A=1
-export B=1
+> var deactivate~ = (virtualenv:activate ~/virtualenvs/beancount-python-lima)
+(beancount-python-lima) pip list
+Package               Version
+--------------------- -------
+beancount-parser-lima 0.6.0
+pip                   24.0
+setuptools            69.1.0
+wheel                 0.42.0
 
-function f2() {
-        export A=2
-        export B=2
-        C2="I am shell variable C2"
-}
+(beancount-python-lima) deactivate
+> pip list
+Exception: exec: "pip": executable file not found in $PATH
+  [tty 4]:1:1-8: pip list
+```
 
-function f3() {
-        export A=3
-        export B=3
-        C3="I am shell variable C3"
-}
+## Installation
 
-$ ./bash-env.sh --shellfns f2,f3 ./tests/shell-functions.env | jq
+Note that a recent change was to unbundle the Bash script backend, previously bash-env-elvish, now [bash-env-json](https://github.com/tesujimath/bash-env-json), because it is now generic JSON, shared by the NuShell and Elvish `bash-env` modules.
 
-{
-  "env": {
-    "B": "1",
-    "A": "1"
-  },
-  "shellvars": {},
-  "fn": {
-    "f2": {
-      "env": {
-        "B": "2",
-        "A": "2"
-      },
-      "shellvars": {
-        "C2": "I am shell variable C2"
-      }
-    },
-    "f3": {
-      "env": {
-        "B": "3",
-        "A": "3"
-      },
-      "shellvars": {
-        "C3": "I am shell variable C3"
-      }
-    }
-  }
-}```
+1. Install `bash-env-json` script somewhere on the PATH (or install the Nix flake).
 
-## History
+2. Use the Elvish modules `bash-env` and/or `virtualenv`
 
-This started life as the [`nu_plugin_bash_env`](https://github.com/tesujimath/nu_plugin_bash_env) plugin for NuShell.  It was forked for Elvish, and then later unified.
+```
+epm:install &silent-if-installed=$true github.com/tesujimath/bash-env-elvish
+use github.com/tesujimath/bash-env-elvish/bash-env
+use github.com/tesujimath/bash-env-elvish/virtualenv
+```
+
+3. (Optional) Define a function in `rc.elv` to unwrap `bash-env` from its namespace
+
+```
+var bash-env~ = $bash-env:bash-env~
+```
+
+## Improvements
+
+1. Virtualenv deactivation is not terribly ergonomic.  There may be a more Elven way to do this.
+
+2. There may be a better way to import these functions into the REPL.
+
+A
