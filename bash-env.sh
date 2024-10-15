@@ -180,6 +180,13 @@ function main() {
     eval_or_source "$_path"
     capture _env_current _shellvars_current
 
+    # validate all the functions we will invoke before committing to the happy path
+    for _fn in "${_shellfn_names[@]}"; do
+        test "$(type -t "$_fn")" == "function" || {
+            emit_error_exit "no such function: $_fn"
+        }
+    done
+
     emit "{" env _env_previous _env_current
     emit "," shellvars _shellvars_previous _shellvars_current
 
