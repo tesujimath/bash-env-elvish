@@ -33,11 +33,17 @@ fn bash-env { |&shellvars=$nil &fn=[] @path|
         if (not-eq $fn []) {
             # build a map of functions which set the environment accordingly
             var functions = (keys $raw[fn] | each {|name|
-                put [$name {
-                  for k (keys $raw[fn][$name][env]) {
-                    set-env $k $raw[fn][$name][env][$k]
+                var named_f = {
+                  for k (keys $raw[fn][$name][env] | put [(all)]) {
+                    var v = $raw[fn][$name][env][$k]
+                    if (eq $v $nil) {
+                      unset-env $k
+                    } else {
+                      set-env $k $v
+                    }
                   }
-                }]
+                }
+                put [$name $named_f]
             } | make-map)
             put [fn $functions]
         }

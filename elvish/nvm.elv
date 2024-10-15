@@ -1,7 +1,7 @@
 # NVM support. Add the following to rc.elv:
 #
 # ```elvish
-# use github.com/tesujimath/bash-env-elvish/nvm
+# use github.com/tesujimath/bash-env/elvish/nvm
 # nvm:init
 # var nvm~ = $nvm:nvm~
 # ```
@@ -11,12 +11,13 @@
 use str
 use path
 
-var bash-env-elvish = (path:dir (src)[name])/bash-env-elvish
+use github.com/tesujimath/bash-env/elvish/bash-env
+var bash-env~ = $bash-env:bash-env~
 
 fn quote-sh {|s| put "'"(str:replace "'" "'\\''" $s)"'" }
 
 fn load-nvm-sh-and-run {|code|
-  echo ". ~/.nvm/nvm.sh\n"$code | $bash-env-elvish | eval (slurp)
+  echo ". ~/.nvm/nvm.sh\n"$code | bash-env
 }
 
 # Initializes nvm.

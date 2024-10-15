@@ -46,41 +46,49 @@ The shell function per se cannot be exported.  Rather what is exported is the *r
 ```
 $ cat ./tests/shell-functions.env
 export A=1
+export B=1
 
 function f2() {
         export A=2
-        BB="I am shell variable BB"
+        export B=2
+        C2="I am shell variable C2"
 }
 
 function f3() {
         export A=3
-        CC="I am shell variable CC"
+        export B=3
+        C3="I am shell variable C3"
 }
 
-
 $ ./bash-env.sh --shellfns f2,f3 ./tests/shell-functions.env | jq
+
 {
-  "env": {},
+  "env": {
+    "B": "1",
+    "A": "1"
+  },
   "shellvars": {},
   "fn": {
     "f2": {
       "env": {
+        "B": "2",
         "A": "2"
       },
       "shellvars": {
-        "BB": "I am shell variable BB"
+        "C2": "I am shell variable C2"
       }
     },
     "f3": {
       "env": {
-        "A": "3",
-        "CC": "I am shell variable CC"
+        "B": "3",
+        "A": "3"
       },
-      "shellvars": {}
+      "shellvars": {
+        "C3": "I am shell variable C3"
+      }
     }
   }
-}
-```
+}```
 
 ## History
 

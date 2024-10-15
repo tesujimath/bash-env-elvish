@@ -24,7 +24,7 @@
                 ''
                   ${old.buildCommand}
                   patchShebangs $out
-                  wrapProgram $out/bin/bash-env.sh --set PATH ${makeBinPath [
+                  wrapProgram $out/bin/bash-env.sh --prefix PATH : ${makeBinPath [
                     coreutils
                     gnused
                     jq
