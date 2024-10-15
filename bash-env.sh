@@ -108,8 +108,13 @@ function emit() {
 }
 
 function eval_or_source() {
-    local _source _path
+    local _source _path _error_file
     _path="$1"
+
+    _error_file=$(mktemp -u)
+    # tell ShellCheck I really do want to expand this now and not at the point of exit
+    # shellcheck disable=SC2064
+    trap "rm -f $_error_file" EXIT
 
     if test -n "$_path"; then
         # source from file if specified
@@ -120,14 +125,15 @@ function eval_or_source() {
 
         # ShellCheck can't cope with sourcing from an unknown path
         # shellcheck disable=SC1090
-        if ! source "$_path" >&2; then
-            emit_error_exit "failed to load environment from '$_path'"
+        if ! source "$_path" >/dev/null 2>"$_error_file"; then
+            emit_error_exit "$(cat "$_error_file")"
         fi
     else
         # otherwise eval from stdin
         _source=$(</dev/stdin)
-        if ! eval "$_source" >&2; then
-            emit_error_exit "failed to load environment from stdin"
+        if ! eval "$_source" >/dev/null 2>"$_error_file"; then
+            # discard error location, because it is this file not the one sourced
+            emit_error_exit "$(sed -e 's/^.*line\s*[0-9]*:\s*//' "$_error_file")"
         fi
     fi
 }
