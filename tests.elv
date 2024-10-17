@@ -1,3 +1,5 @@
+#!/usr/bin/env elvish
+
 use github.com/tesujimath/elvish-tap/tap
 
 use ./bash-env
@@ -18,7 +20,7 @@ fn check-env {|expected-env|
   if (eq $actual-env $expected-env) {
     put $true
   } else {
-    put $false [&expected=$expected-env &actual=$actual-env]
+    put $false [&doc=[&expected=$expected-env &actual=$actual-env]]
   }
 }
 
@@ -38,5 +40,5 @@ var tests = [
   }]
 ]
 
-tap:run $tests
+tap:run $tests | tap:status
 
