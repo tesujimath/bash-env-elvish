@@ -18,9 +18,17 @@ fn check-env {|expected-env|
   }
 
   if (eq $actual-env $expected-env) {
-    put $true
+    put [&ok=$true]
   } else {
-    put $false [&doc=[&expected=$expected-env &actual=$actual-env]]
+    put [&ok=$false &doc=[&expected-env=$expected-env &actual-env=$actual-env]]
+  }
+}
+
+fn check-shellvars {|actual expected|
+  if (eq $actual $expected) {
+    put [&ok=$true]
+  } else {
+    put [&ok=$false &doc=[&expected-shellvars=$expected &actual-shellvars=$actual]]
   }
 }
 
@@ -36,6 +44,23 @@ var tests = [
       &A=a
       &B=b
       &C=$nil
+    ]
+  }]
+
+  [&d=shell-variables &f={
+    unset-env A
+    unset-env B
+    unset-env C
+
+    var env = (bash-env &shellvars ./tests/shell-variables.env)
+
+    check-env [
+      &B=exported
+    ]
+
+    check-shellvars $env[shellvars] [
+      &A="not exported"
+      &C="embedded=equals"
     ]
   }]
 ]
