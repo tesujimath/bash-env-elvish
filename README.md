@@ -1,16 +1,16 @@
 # bash-env-elvish
 
-This is a Bash script `bash-env-elvish` and Elvish modules `bash-env` and `virtualenv` for:
-
 - importing Bash environment into Elvish
 - extracting Bash style shell variables from source files like `/etc/os-release`
+- exporting Elvish function which has the same effect on environment as a Bash function
 - activating/deactivating Python virtualenv
+- nvm for Node version management
 
-Source files may be arbitrarily complex Bash, including conditionals, etc.
+**Warning: breaking change in `0.4.0`, the Bash backend script `bash-env-elvish` has been unbundled, and is now consumed as [`bash-env-json`](https://github.com/tesujimath/bash-env-json)**
 
-# Usage
+## Example Usage
 
-## bash-env
+### bash-env
 ```
 > echo 'export A=1; export B=2; export Z=101' | bash-env:bash-env
 > echo $E:A $E:B $E:Z
@@ -30,19 +30,20 @@ Agent pid 921717
 > echo $E:SSH_AUTH_SOCK
 /tmp/ssh-XXXXXXI4IoXr/agent.921715
 
-> egrep '(ID|NAME)=' /etc/os-release
-BUILD_ID="24.11.20240531.57610d2"
-ID=nixos
-IMAGE_ID=""
-NAME=NixOS
-PRETTY_NAME="NixOS 24.11 (Vicuña)"
-VERSION_CODENAME="vicuña"
-VERSION_ID="24.11"
-> bash-env:bash-env &shellvars=[ID IMAGE_ID NAME SOMETHING_ELSE] /etc/os-release
-▶ [&ID=nixos &IMAGE_ID='' &NAME=NixOS]
+> bash-env:bash-env /etc/os-release
+
+> bash-env:bash-env &shellvars /etc/os-release
+▶ [&ANSI_COLOR='1;34' &BASH_LINENO=189 &BUG_REPORT_URL=https://github.com/NixOS/nixpkgs/issues &BUILD_ID=24.11.20240916.99dc878 &DOCUMENTATION_URL=https://nixos.org/learn.html &HOME_URL=https://nixos.org/ &ID=nixos &LOGO=nix-snowflake &NAME=NixOS &PRETTY_NAME='NixOS 24.11 (Vicuna)' &SUPPORT_URL=https://nixos.org/community.html &VERSION='24.11 (Vicuna)' &VERSION_CODENAME=vicuna &VERSION_ID=24.11 &_value=$nil]
+
+> var env = (echo 'f() { export ABC=123; }' | bash-env &fn=[f])
+> echo $E:ABC
+
+> $env[fn][f]
+> echo $E:ABC
+123
 ```
 
-## virtualenv
+### virtualenv
 
 ```
 > var deactivate~ = (virtualenv:activate ~/virtualenvs/beancount-python-lima)
@@ -60,9 +61,11 @@ Exception: exec: "pip": executable file not found in $PATH
   [tty 4]:1:1-8: pip list
 ```
 
-# Installation
+## Installation
 
-1. Install `bash-env-elvish` script somewhere on the PATH (or install the Nix flake).
+Note that a recent change was to unbundle the Bash script backend, previously `bash-env-elvish`, now ``[bash-env-json](https://github.com/tesujimath/bash-env-json)``, because it is now generic JSON, shared by the NuShell and Elvish `bash-env` modules.
+
+1. Install `bash-env-json` script somewhere on the PATH (or install the Nix flake).
 
 2. Use the Elvish modules `bash-env` and/or `virtualenv`
 
@@ -75,13 +78,11 @@ use github.com/tesujimath/bash-env-elvish/virtualenv
 3. (Optional) Define a function in `rc.elv` to unwrap `bash-env` from its namespace
 
 ```
-fn bash-env { |&shellvars=[] @args| bash-env:bash-env &shellvars=$shellvars $@args }
+var bash-env~ = $bash-env:bash-env~
 ```
 
-# Improvements
+## Improvements
 
 1. Virtualenv deactivation is not terribly ergonomic.  There may be a more Elven way to do this.
 
 2. There may be a better way to import these functions into the REPL.
-
-Any suggestions for improvements are gladly received as issues.

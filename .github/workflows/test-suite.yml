@@ -1,0 +1,24 @@
+name: test suite
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Install Nix
+        uses: cachix/install-nix-action@v30
+      - name: Install elvish-tap
+        run: |
+          nix develop '.#ci' --command elvish -c 'use epm; epm:install github.com/tesujimath/elvish-tap'
+      - name: Run tests
+        run: |
+          nix develop '.#ci' --command ./tests.elv

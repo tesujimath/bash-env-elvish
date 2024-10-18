@@ -1,26 +1,52 @@
 # Bash Environment import for Elvish
 use str
 
-fn bash-env { |&shellvars=[] @args|
-  var env = ""
-  var n_args = (count $args)
-  var comma_shellvars = (str:join , $shellvars)
-  if (== $n_args 0) {
-    set env = (bash-env-elvish --shellvars $comma_shellvars | slurp)
-  } elif (== $n_args 1) {
-    set env = (bash-env-elvish --shellvars $comma_shellvars $args[0] | slurp)
-  } else {
+fn bash-env { |&shellvars=$nil &fn=[] @path|
+  if (> (count $path) 1) {
     fail "bash-env takes zero (for stdin) or one argument (for path) only"
   }
-  var eval-ns = $nil
-  eval &on-end={|ns| set eval-ns = $ns} $env
 
-  # return shellvars as a map, if any
-  if (> (count $shellvars) 0) {
-    put (all $shellvars | each {|shellvar|
-      if (has-key $eval-ns $shellvar) {
-        put [$shellvar $eval-ns[$shellvar]]
+  var args = ({
+    if (not-eq $fn []) {
+      put --shellfns (str:join , $fn)
+    }
+
+    put (all $path)
+  } | put [(all)])
+
+  var raw-text = (bash-env-json (all $args) | slurp)
+  var raw = (echo $raw-text | from-json)
+  keys $raw[env] | each {|k|
+    var v = $raw[env][$k]
+    if (eq $v $nil) {
+      unset-env $k
+    } else {
+      set-env $k $raw[env][$k]
+    }
+  }
+
+  # output only if we have shellvars or fn
+  if (or (not-eq $shellvars $nil) (not-eq $fn [])) {
+    {
+      if (not-eq $shellvars $nil) { put [shellvars $raw[shellvars]] }
+
+      if (not-eq $fn []) {
+          # build a map of functions which set the environment accordingly
+          var functions = (keys $raw[fn] | each {|name|
+              var named_f = {
+                for k (keys $raw[fn][$name][env] | put [(all)]) {
+                  var v = $raw[fn][$name][env][$k]
+                  if (eq $v $nil) {
+                    unset-env $k
+                  } else {
+                    set-env $k $v
+                  }
+                }
+              }
+              put [$name $named_f]
+          } | make-map)
+          put [fn $functions]
       }
-    } | make-map)
+    } | make-map
   }
 }

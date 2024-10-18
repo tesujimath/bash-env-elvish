@@ -1,43 +1,44 @@
 {
-  description = "Nix package for bash-env-elvish";
+  description = "Nix developer and CI tooling for bash-env-elvish";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
+
     flake-utils.url = "github:numtide/flake-utils";
+
+    bash-env-json = {
+      url = "github:tesujimath/bash-env-json/main";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
-  outputs = { nixpkgs, flake-utils, ... }:
+  outputs = { nixpkgs, flake-utils, bash-env-json, ... }:
     flake-utils.lib.eachDefaultSystem
       (system:
         let
           pkgs = import nixpkgs {
             inherit system;
           };
-          bash_env_elvish =
-            let
-              inherit (pkgs) bash coreutils makeWrapper writeShellScriptBin;
-              inherit (pkgs.lib) makeBinPath;
-            in
-            (writeShellScriptBin "bash-env-elvish" (builtins.readFile ./bash-env-elvish)).overrideAttrs (old: {
-              buildInputs = [ bash makeWrapper ];
-              buildCommand =
-                ''
-                  ${old.buildCommand}
-                  patchShebangs $out
-                  wrapProgram $out/bin/bash-env-elvish --set PATH ${makeBinPath [
-                    coreutils
-                  ]}
-                '';
-            });
+          flakePkgs = {
+            bash-env-json = bash-env-json.packages.${system}.default;
+          };
         in
         {
-          devShells.default = pkgs.mkShell {
-            buildInputs = [
-              bash_env_elvish
-            ];
-          };
+          devShells =
+            let
+              inherit (pkgs) bashInteractive elvish yq mkShell;
+              ci-packages =
+                [
+                  elvish
+                  yq
+                  flakePkgs.bash-env-json
+                ];
+            in
+            {
+              default = mkShell { buildInputs = ci-packages ++ [ bashInteractive ]; };
 
-          packages.default = bash_env_elvish;
+              ci = mkShell { buildInputs = ci-packages; };
+            };
         }
       );
 }
