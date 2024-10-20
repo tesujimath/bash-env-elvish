@@ -16,6 +16,11 @@ fn bash-env { |&shellvars=$nil &fn=[] @path|
 
   var raw-text = (bash-env-json (all $args) | slurp)
   var raw = (echo $raw-text | from-json)
+
+  if (has-key $raw error) {
+    fail $raw[error]
+  }
+
   keys $raw[env] | each {|k|
     var v = $raw[env][$k]
     if (eq $v $nil) {
