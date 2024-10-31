@@ -15,13 +15,15 @@ fn bash-env { |&shellvars=$nil &fn=[] @path|
   } | put [(all)])
 
   var raw-text = (var ok = ?(bash-env-json (all $args) | slurp))
+  if (not $ok) {
+    fail $ok
+  }
+
   var raw = (echo $raw-text | from-json)
 
   # on failure prefer to show the JSON error if possible
   if (has-key $raw error) {
     fail $raw[error]
-  } elif (not $ok) {
-    fail $ok
   }
 
   keys $raw[env] | each {|k|
