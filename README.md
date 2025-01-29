@@ -3,8 +3,11 @@
 - importing Bash environment into Elvish
 - extracting Bash style shell variables from source files like `/etc/os-release`
 - exporting Elvish function which has the same effect on environment as a Bash function
-- activating/deactivating Python virtualenv
-- nvm for Node version management
+
+Additional modules:
+- [virtualenv](virtualenv.elv) for activating/deactivating Python virtualenv (below)
+- [nvm](nvm.elv) for Node version management
+- [lmod](lmod.elv) for Lmod Environment Module support
 
 **Warning: breaking change in `0.4.0`, the Bash backend script `bash-env-elvish` has been unbundled, and is now consumed as [`bash-env-json`](https://github.com/tesujimath/bash-env-json)**
 
