@@ -64,6 +64,16 @@ Exception: exec: "pip": executable file not found in $PATH
   [tty 4]:1:1-8: pip list
 ```
 
+Since `virtualenv` changes the prompt, it is not possible to use in a script, since the `edit:` namespace is unavailable.  In that case, use the `virtualenv-noprompt` module instead, for example:
+
+```
+#!/usr/bin/env elvish
+
+use github.com/tesujimath/bash-env-elvish/virtualenv-noprompt virtualenv
+
+var deactivate~ = (virtualenv:activate ~/virtualenvs/my-env)
+```
+
 ## Installation
 
 Note that a recent change was to unbundle the Bash script backend, previously `bash-env-elvish`, now ``[bash-env-json](https://github.com/tesujimath/bash-env-json)``, because it is now generic JSON, shared by the NuShell and Elvish `bash-env` modules.
